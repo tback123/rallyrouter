@@ -1,9 +1,11 @@
+import 'dart:convert';
 import 'dart:math';
 
 import 'package:flutter/material.dart';
 import 'package:mapbox_gl/mapbox_gl.dart';
 import 'package:rallyrouter/keys.dart';
 import 'package:http/http.dart' as http;
+import 'package:rallyrouter/directions.dart';
 
 class RoutePlanningPage extends StatefulWidget {
   @override
@@ -14,6 +16,8 @@ class RoutePlanningPageState extends State<RoutePlanningPage> {
   MapboxMapController? mapController;
   var isLight = true;
   var myAccessToken = MapboxAccessToken;
+  final String directionBase =
+      'https://api.mapbox.com/directions/v5/mapbox/driving/';
 
   List<LatLng> markers = [];
 
@@ -21,13 +25,48 @@ class RoutePlanningPageState extends State<RoutePlanningPage> {
     setState(() {
       this.markers = markers;
     });
+    mapController!.clearCircles();
+    for (var marker in markers) {
+      var cOptions =
+          CircleOptions(circleColor: "red", geometry: marker, draggable: true);
+      mapController!.addCircle(cOptions);
+    }
   }
 
-  getRoute() {
+  getRoute() async {
+    // Snackbar to show route in progress
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-      content: Text("Getting Route..."),
+      content: Center(child: Text("Getting Route...")),
       duration: Duration(seconds: 1),
     ));
+
+    // Form request URL
+    String request_url = directionBase;
+    for (var marker in markers) {
+      request_url += '${marker.longitude},${marker.latitude}';
+      if (marker == markers.last) {
+        request_url += '?';
+      } else {
+        request_url += ';';
+      }
+    }
+    request_url += 'waypoints_per_route=true&';
+    request_url += 'access_token=$myAccessToken';
+
+    print(request_url);
+
+    try {
+      final response = await http.get(Uri.parse(request_url));
+      if (response.statusCode == 200) {
+        print(response.body.toString());
+        final Directions dir = Directions.fromJson(jsonDecode(response.body));
+        print(dir.code);
+        print(dir.routes[0].waypoints[0].location.latitude);
+        print(dir.routes[0].waypoints[0].location.longitude);
+      }
+    } catch (e) {
+      print(e.toString());
+    }
   }
 
   _onMapCreated(MapboxMapController controller) {
@@ -77,11 +116,13 @@ class RoutePlanningPageState extends State<RoutePlanningPage> {
               ),
             ),
             body: MapboxMap(
-              styleString: isLight ? MapboxStyles.LIGHT : MapboxStyles.DARK,
+              styleString: isLight
+                  ? MapboxStyles.MAPBOX_STREETS
+                  : MapboxStyles.SATELLITE_STREETS,
               accessToken: myAccessToken,
               onMapCreated: _onMapCreated,
-              initialCameraPosition:
-                  const CameraPosition(target: LatLng(0.0, 0.0)),
+              initialCameraPosition: const CameraPosition(
+                  target: LatLng(-33.865143, 151.209900), zoom: 13),
               onStyleLoadedCallback: _onStyleLoadedCallback,
               onMapClick: _onMapClick,
             ),
