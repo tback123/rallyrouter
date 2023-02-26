@@ -3,13 +3,14 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:mapbox_gl/mapbox_gl.dart';
 import 'package:rallyrouter/keys.dart';
+import 'package:http/http.dart' as http;
 
-class FullMap extends StatefulWidget {
+class RoutePlanningPage extends StatefulWidget {
   @override
-  State createState() => FullMapState();
+  State createState() => RoutePlanningPageState();
 }
 
-class FullMapState extends State<FullMap> {
+class RoutePlanningPageState extends State<RoutePlanningPage> {
   MapboxMapController? mapController;
   var isLight = true;
   var myAccessToken = MapboxAccessToken;
@@ -20,6 +21,13 @@ class FullMapState extends State<FullMap> {
     setState(() {
       this.markers = markers;
     });
+  }
+
+  getRoute() {
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      content: Text("Getting Route..."),
+      duration: Duration(seconds: 1),
+    ));
   }
 
   _onMapCreated(MapboxMapController controller) {
@@ -55,19 +63,20 @@ class FullMapState extends State<FullMap> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-        floatingActionButton: Padding(
-          padding: const EdgeInsets.all(32.0),
-          child: FloatingActionButton(
-            child: Icon(Icons.swap_horiz),
-            onPressed: () => setState(
-              () => isLight = !isLight,
+      body: Row(children: [
+        Expanded(
+          flex: 7,
+          child: Scaffold(
+            floatingActionButton: Padding(
+              padding: const EdgeInsets.all(32.0),
+              child: FloatingActionButton(
+                child: Icon(Icons.swap_horiz),
+                onPressed: () => setState(
+                  () => isLight = !isLight,
+                ),
+              ),
             ),
-          ),
-        ),
-        body: Row(children: [
-          Expanded(
-            flex: 7,
-            child: MapboxMap(
+            body: MapboxMap(
               styleString: isLight ? MapboxStyles.LIGHT : MapboxStyles.DARK,
               accessToken: myAccessToken,
               onMapCreated: _onMapCreated,
@@ -77,14 +86,17 @@ class FullMapState extends State<FullMap> {
               onMapClick: _onMapClick,
             ),
           ),
-          Expanded(
-            flex: 2,
-            child: MarkerList(
-              markers: markers,
-              setMarkers: setMarkers,
-            ),
-          )
-        ]));
+        ),
+        Expanded(
+          flex: 2,
+          child: MarkerPanel(
+            markers: markers,
+            setMarkers: setMarkers,
+            getRoute: getRoute,
+          ),
+        ),
+      ]),
+    );
   }
 }
 
@@ -105,9 +117,42 @@ class ElevatedCardExample extends StatelessWidget {
   }
 }
 
+class MarkerPanel extends StatelessWidget {
+  final Function(List<LatLng> newMarkers)? setMarkers;
+  final List<LatLng> markers;
+
+  final Function() getRoute;
+
+  MarkerPanel(
+      {Key? key,
+      required this.markers,
+      required this.setMarkers,
+      required this.getRoute});
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(children: [
+      Expanded(
+        flex: 1,
+        child: Text(
+          'Markers',
+          textAlign: TextAlign.center,
+          overflow: TextOverflow.ellipsis,
+          style: Theme.of(context).textTheme.headlineSmall,
+        ),
+      ),
+      Expanded(
+          flex: 10,
+          child: Card(
+              child: MarkerList(markers: markers, setMarkers: setMarkers))),
+      ElevatedButton(onPressed: getRoute, child: Text('Get Route')),
+    ]);
+  }
+}
+
 class MarkerList extends StatelessWidget {
   final Function(List<LatLng> newMarkers)? setMarkers;
-  List<LatLng> markers;
+  final List<LatLng> markers;
 
   MarkerList({Key? key, required this.markers, required this.setMarkers});
 
@@ -115,10 +160,9 @@ class MarkerList extends StatelessWidget {
   Widget build(BuildContext context) {
     final ColorScheme colorScheme = Theme.of(context).colorScheme;
     final Color oddItemColor = colorScheme.primary.withOpacity(0.05);
-    final Color evenItemColor = colorScheme.primary.withOpacity(0.15);
 
     return ReorderableListView(
-      padding: const EdgeInsets.symmetric(horizontal: 40),
+      padding: const EdgeInsets.symmetric(horizontal: 10),
       children: <Widget>[
         for (int index = 0; index < markers.length; index += 1)
           ListTile(
@@ -134,6 +178,7 @@ class MarkerList extends StatelessWidget {
         }
         final LatLng item = markers.removeAt(oldIndex);
         markers.insert(newIndex, item);
+        setMarkers!(markers);
       },
     );
   }
