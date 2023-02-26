@@ -154,23 +154,24 @@ class MarkerList extends StatelessWidget {
   final Function(List<LatLng> newMarkers)? setMarkers;
   final List<LatLng> markers;
 
+  removeMarker(int index) {
+    markers.removeAt(index);
+    setMarkers!(markers);
+  }
+
   MarkerList({Key? key, required this.markers, required this.setMarkers});
 
   @override
   Widget build(BuildContext context) {
-    final ColorScheme colorScheme = Theme.of(context).colorScheme;
-    final Color oddItemColor = colorScheme.primary.withOpacity(0.05);
-
     return ReorderableListView(
       padding: const EdgeInsets.symmetric(horizontal: 10),
       children: <Widget>[
         for (int index = 0; index < markers.length; index += 1)
-          ListTile(
-            key: Key('$index'),
-            tileColor: oddItemColor,
-            title: Text(
-                '$index ${markers[index].latitude}, ${markers[index].longitude}'),
-          ),
+          MarkerItem(
+            index: index,
+            point: markers[index],
+            removeMarker: removeMarker,
+          )
       ],
       onReorder: (int oldIndex, int newIndex) {
         if (oldIndex < newIndex) {
@@ -180,6 +181,30 @@ class MarkerList extends StatelessWidget {
         markers.insert(newIndex, item);
         setMarkers!(markers);
       },
+    );
+  }
+}
+
+class MarkerItem extends StatelessWidget {
+  final LatLng point;
+  final int index;
+  final Function removeMarker;
+
+  MarkerItem(
+      {required this.index, required this.point, required this.removeMarker})
+      : super(key: Key('$index'));
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: EdgeInsets.all(8.0),
+      child: Row(children: [
+        GestureDetector(
+            onTap: () => {removeMarker(index)},
+            child: Card(child: Icon(Icons.close))),
+        Text("$index: ", style: TextStyle(fontWeight: FontWeight.bold)),
+        Text("${point.latitude}, ${point.longitude}"),
+      ]),
     );
   }
 }
