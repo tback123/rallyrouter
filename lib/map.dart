@@ -6,6 +6,7 @@ import 'package:mapbox_gl/mapbox_gl.dart';
 import 'package:rallyrouter/keys.dart';
 import 'package:http/http.dart' as http;
 import 'package:rallyrouter/directions.dart';
+import 'package:rallyrouter/mapmatching.dart';
 
 class RoutePlanningPage extends StatefulWidget {
   @override
@@ -17,7 +18,7 @@ class RoutePlanningPageState extends State<RoutePlanningPage> {
   var isLight = true;
   var myAccessToken = MapboxAccessToken;
   final String directionBase =
-      'https://api.mapbox.com/directions/v5/mapbox/driving/';
+      'https://api.mapbox.com/matching/v5/mapbox/driving/';
 
   List<LatLng> markers = [];
 
@@ -50,7 +51,10 @@ class RoutePlanningPageState extends State<RoutePlanningPage> {
         request_url += ';';
       }
     }
-    request_url += 'waypoints_per_route=true&';
+    request_url += 'steps=true&';
+    request_url += 'geometries=geojson&';
+    request_url += 'overview=full&';
+    // request_url += 'waypoints_per_route=true&';
     request_url += 'access_token=$myAccessToken';
 
     print(request_url);
@@ -59,10 +63,9 @@ class RoutePlanningPageState extends State<RoutePlanningPage> {
       final response = await http.get(Uri.parse(request_url));
       if (response.statusCode == 200) {
         print(response.body.toString());
-        final Directions dir = Directions.fromJson(jsonDecode(response.body));
-        print(dir.code);
-        print(dir.routes[0].waypoints[0].location.latitude);
-        print(dir.routes[0].waypoints[0].location.longitude);
+        final MapboxMapMatching match =
+            MapboxMapMatching.fromJson(jsonDecode(response.body));
+        print(match.code);
       }
     } catch (e) {
       print(e.toString());
@@ -141,23 +144,6 @@ class RoutePlanningPageState extends State<RoutePlanningPage> {
   }
 }
 
-class ElevatedCardExample extends StatelessWidget {
-  const ElevatedCardExample({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return const Center(
-      child: Card(
-        child: SizedBox(
-          width: 300,
-          height: 100,
-          child: Center(child: Text('Elevated Card')),
-        ),
-      ),
-    );
-  }
-}
-
 class MarkerPanel extends StatelessWidget {
   final Function(List<LatLng> newMarkers)? setMarkers;
   final List<LatLng> markers;
@@ -186,7 +172,17 @@ class MarkerPanel extends StatelessWidget {
           flex: 10,
           child: Card(
               child: MarkerList(markers: markers, setMarkers: setMarkers))),
-      ElevatedButton(onPressed: getRoute, child: Text('Get Route')),
+      Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          ElevatedButton(onPressed: getRoute, child: Text('Get Route')),
+          ElevatedButton(
+              onPressed: () {
+                setMarkers!([]);
+              },
+              child: Text('Clear markers')),
+        ],
+      ),
     ]);
   }
 }
