@@ -123,18 +123,18 @@ class MapboxStep {
       distance: json['distance'],
       duration: json['duration'],
       weight: json['weight'],
-      duration_typical: json['duration_typical'],
-      weight_typical: json['weight_typical'],
-      geometry: json['geometry'],
+      duration_typical: json['duration_typical'] ?? 0.0,
+      weight_typical: json['weight_typical'] ?? 0.0,
+      geometry: json['geometry'].toString(), // object
       name: json['name'],
-      ref: json['ref'],
-      destinations: json['destinations'],
-      exits: json['exits'],
+      ref: json['ref'] ?? "",
+      destinations: json['destinations'] ?? "",
+      exits: json['exits'] ?? "",
       driving_side: json['driving_side'],
       mode: json['mode'],
-      pronunciation: json['pronunciation'],
-      speedLimitSign: json['speedLimitSign'],
-      speedLimitUnit: json['speedLimitUnit'],
+      pronunciation: json['pronunciation'] ?? "",
+      speedLimitSign: json['speedLimitSign'] ?? "",
+      speedLimitUnit: json['speedLimitUnit'] ?? "",
     );
   }
 }
@@ -150,7 +150,7 @@ class MapboxLeg {
   // final List<MapboxAdmin> admins;
   // final List<MapboxIncident> incidents;
   // final List<MapboxClosure> closures;
-  final MapboxAnnotation annotation;
+  final MapboxAnnotation? annotation;
   final List<MapboxViaWaypoint> via_waypoints;
 
   const MapboxLeg({
@@ -161,7 +161,7 @@ class MapboxLeg {
     required this.weight_typical,
     required this.steps,
     required this.summary,
-    required this.annotation,
+    this.annotation,
     required this.via_waypoints,
   });
 
@@ -178,11 +178,13 @@ class MapboxLeg {
       distance: json['distance'],
       duration: json['duration'],
       weight: json['weight'],
-      duration_typical: json['duration_typical'],
-      weight_typical: json['weight_typical'],
+      duration_typical: json['duration_typical'] ?? 0.0,
+      weight_typical: json['weight_typical'] ?? 0.0,
       steps: steps,
       summary: json['summary'],
-      annotation: MapboxAnnotation.fromJson(json['annotation']),
+      annotation: json['annotation'] != null
+          ? MapboxAnnotation.fromJson(json['annotation'])
+          : null,
       via_waypoints: via_waypoints,
     );
   }

@@ -7,9 +7,25 @@ class MapboxTracepoint {
   final int waypoint_index;
   final int alternatives_count;
   final String name;
-  final List<MapboxLocation> location;
+  final MapboxLocation location;
 
-  factory MapboxTracepoint.fromJson(dynamic json) {}
+  const MapboxTracepoint({
+    required this.matchings_index,
+    required this.waypoint_index,
+    required this.alternatives_count,
+    required this.name,
+    required this.location,
+  });
+
+  factory MapboxTracepoint.fromJson(dynamic json) {
+    return MapboxTracepoint(
+      matchings_index: json['matchings_index'],
+      waypoint_index: json['waypoint_index'],
+      alternatives_count: json['alternatives_count'],
+      name: json['name'],
+      location: MapboxLocation.fromJson(json['location']),
+    );
+  }
 }
 
 class MapboxMatch {
@@ -42,7 +58,7 @@ class MapboxMatch {
       duration: json['duration'],
       weight: json['weight'],
       weight_name: json['weight_name'],
-      geometry: json['geometry'],
+      geometry: json['geometry'].toString(),
       legs: legs,
     );
   }
