@@ -1,0 +1,157 @@
+import mapboxgl from "mapbox-gl";
+import { useEffect, useRef, useState, NavigationControl } from "react";
+import "./App.css";
+
+// mapboxgl.accessToken = import.meta.env.VITE_MAPBOX_KEY;
+mapboxgl.accessToken = process.env.MAPBOX_KEY
+
+function App() {
+  const mapContainer = useRef(null);
+  const mapCanvas = useRef(null);
+  const map = useRef(null);
+
+  const [markerList, setMarkerList] = useState([]);
+
+  const [lng, setLng] = useState(151.209900);
+  const [lat, setLat] = useState(-33.865143);
+  const [zoom, setZoom] = useState(13);
+
+  const geojson = {
+    'type': 'FeatureCollection',
+    'features': [
+      {
+        'type': 'Feature',
+        'geometry': {
+          'type': 'Point',
+          'coordinates': [lng, lat]
+        }
+      }
+    ]
+  };
+
+  useEffect(() => {
+
+    // Maker sure the map only loads once
+    if (!map.current) {
+      map.current = new mapboxgl.Map({
+        container: mapContainer.current,
+        style: "mapbox://styles/mapbox/streets-v12",
+        center: [lng, lat],
+        zoom: zoom,
+      })
+
+      map.current.addControl(
+        new MapboxDirections({
+          accessToken: mapboxgl.accessToken
+        }),
+        'top-left'
+      );
+
+      mapCanvas.current = map.current.getCanvasContainer();
+
+      // Add zoom and rotation controls to the map.
+      map.current.addControl(new mapboxgl.NavigationControl());
+
+      // Add a scale control to the map
+      map.current.addControl(new mapboxgl.ScaleControl());
+
+      // Add the handler for clicks
+      map.current.on('click', (e) => {
+        console.log(e.lngLat);
+        setMarkerList(markerList => [...markerList, e.lngLat]);
+      })
+
+      map.current.on('load', () => {
+
+        // Add a single point to the map.
+        map.current.addSource('point', {
+          'type': 'geojson',
+          'data': geojson
+        });
+
+        // Add point later to map
+        map.current.addLayer({
+          'id': 'point',
+          'type': 'circle',
+          'source': 'point',
+          'paint': {
+            'circle-radius': 10,
+            'circle-color': '#F84C4C' // red color
+          }
+        });
+
+        // When the cursor enters a feature in
+        // the point layer, prepare for dragging.
+        map.current.on('mouseenter', 'point', () => {
+          map.current.setPaintProperty('point', 'circle-color', '#3bb2d0');
+          mapCanvas.current.style.cursor = 'move';
+        });
+
+        map.current.on('mouseleave', 'point', () => {
+          map.current.setPaintProperty('point', 'circle-color', '#3887be');
+          mapCanvas.current.style.cursor = '';
+        });
+
+        map.current.on('mousedown', 'point', (e) => {
+          // Prevent the default map drag behavior.
+          e.preventDefault();
+
+          mapCanvas.current.style.cursor = 'grab';
+
+          map.current.on('mousemove', onMove);
+          map.current.once('mouseup', onUp);
+        });
+
+        map.current.on('touchstart', 'point', (e) => {
+          if (e.points.length !== 1) return;
+
+          // Prevent the default map drag behavior.
+          e.preventDefault();
+
+          map.current.on('touchmove', onMove);
+          map.current.once('touchend', onUp);
+        });
+      })
+    }
+
+    console.log(markerList);
+
+  })
+
+  // Function when clicking the marker
+  function onMove(e) {
+    const coords = e.lngLat;
+
+    // Set a UI indicator for dragging.
+    mapCanvas.current.style.cursor = 'grabbing';
+
+    // Update the Point feature in `geojson` coordinates
+    // and call setData to the source layer `point` on it.
+    geojson.features[0].geometry.coordinates = [coords.lng, coords.lat];
+    map.current.getSource('point').setData(geojson);
+  }
+
+  // function when finish with dragging the marker
+  function onUp(e) {
+    const coords = e.lngLat;
+
+    console.log(coords);
+
+    // Reset the cursor style
+    mapCanvas.current.style.cursor = '';
+
+    // Unbind mouse/touch events
+    map.current.off('mousemove', onMove);
+    map.current.off('touchmove', onMove);
+  }
+
+
+  return (
+    <div className="App">
+      <div ref={mapContainer} className="map-container" />
+    </div>
+  );
+}
+
+
+export default App;
