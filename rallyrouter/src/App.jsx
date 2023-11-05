@@ -2,9 +2,9 @@ import * as React from 'react';
 import * as turf from '@turf/turf'
 import Map, { Marker, NavigationControl, Source, Layer } from 'react-map-gl';
 import Pin from './Pin.jsx';
-// import * as MapMatching from '@mapbox/mapbox-sdk/services/map-matching'
+import mapMatching from '@mapbox/mapbox-sdk/services/map-matching';
 
-import { Grid, List, ListItem, ListItemButton, ListItemText, Button, Snackbar, Alert } from '@mui/material';
+import { Grid, List, ListItem, ListItemButton, ListItemText, Button, Snackbar, Alert, Box } from '@mui/material';
 import ClearIcon from '@mui/icons-material/Clear';
 
 const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN;
@@ -38,11 +38,8 @@ function App() {
         "varient": 'info'
     }
 
-    // const mbxClient = require('@mapbox/mapbox-sdk');
-    // const mbxMapMatching = require('@mapbox/mapbox-sdk/services/map-matching');
-    // const baseClient = mbxClient({ accessToken: MAPBOX_TOKEN });
-    // const matchingService = mbxMapMatching(baseClient);
-
+    // const mbxMapMatching = require('@mapbox/mapbox-sdk/services/map-matching.js');
+    const mapMatchingService = mapMatching({ accessToken: MAPBOX_TOKEN });
 
     const [snack, setSnack] = React.useState(defaultSnack);
 
@@ -58,30 +55,41 @@ function App() {
     }
 
     function getRoute() {
-        const coordinates = turf.coordAll(markerJson).join(";");
-        const profile = "mapbox/driving/";
 
-        const req_str = new URL("https://api.mapbox.com/matching/v5/");
-        req_str.pathname = req_str.pathname.concat(profile);
-        req_str.pathname = req_str.pathname.concat(coordinates);
-        req_str.searchParams.append("geometries", "geojson");
-        req_str.searchParams.append("steps", "true");
-        req_str.searchParams.append("overview", "full");
-        req_str.searchParams.append("access_token", MAPBOX_TOKEN);
+        if (markerJson === null || markerJson.features.length < 2) {
+            setSnack({ varient: "error", show: true, message: "Must have at least 2 points in route!" });
+            return;
+        }
 
-        console.log(req_str.toString());
+        // Build points
+        let points = [];
+        markerJson.features.forEach(feature => {
+            points = points.concat({ coordinates: feature.geometry.coordinates, approach: 'curb' })
+        });
 
-        fetch(req_str.toString())
-            .then(response => response.json())
-            .then(result => {
+
+
+        mapMatchingService.getMatch({
+            points: points,
+            profile: 'driving',
+            overview: 'full',
+            tidy: false,
+            geometries: 'geojson',
+            steps: true
+        })
+            .send()
+            .then(response => response.body)
+            .then(matching => {
+                console.log(matching);
                 setSnack({ varient: "success", show: true, message: "Got Route!" })
-                setRoute(result.matchings[0].geometry);
-                console.log(result);
+                setRoute(matching.matchings[0].geometry);
+                console.log(matching);
             })
             .catch(res => {
                 setSnack({ varient: "error", show: true, message: "Error Getting Route!" })
                 console.log(res);
             });
+
     }
 
     function onMapClick(e) {
@@ -205,8 +213,8 @@ function App() {
 
                 </Map>
             </Grid>
-            <Grid item xs={2} >
-                <List>
+            <Grid item xs={2} style={{ display: 'flex', height: '100%', flexDirection: 'column', justifyContent: 'space-between' }} >
+                <List >
                     {markerJson &&
                         markerJson.features.map((marker, i) => {
                             return (
@@ -228,7 +236,7 @@ function App() {
                             )
                         })}
                 </List>
-
+                
                 <Button onClick={getRoute}>
                     <p>Get Route</p>
                 </Button>
